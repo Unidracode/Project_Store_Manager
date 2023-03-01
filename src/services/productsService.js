@@ -1,43 +1,56 @@
 const { productsModel } = require('../models');
-const productsValidate = require('./validates/products.validate');
-const errorUtil = require('../utils/error.util');
+const schema = require('./Validations/validationsInputValues');
 
-const getAll = async () => {
-  const products = await productsModel.getAll();
-  if (!products || products.length === 0) return null;
-  return products;
+const listProducts = async () => {
+  const products = await productsModel.listProducts();
+  return { type: null, message: products };
 };
 
-const getById = async (id) => {
-  if (!id || typeof id !== 'number') return null;
-  const product = await productsModel.getById(id);
-  return product[0];
+const listProductById = async (productId) => {
+  const error = schema.validateId(productId);
+  if (error.type) return error;
+
+  const product = await productsModel.listProductById(productId);
+
+  if (!product) return { type: 'PRODUCT_NOT_FOUND', message: 'Product not found' };
+
+  return { type: null, message: product };
 };
 
-const create = async (name) => {
-  if (!name) return null;
-  const id = await productsModel.create(name);
-  return { id, name };
+const addProduct = async (productName) => {
+  const error = schema.validateNewProduct(productName);
+  if (error.type) return error;
+
+  const newProductId = await productsModel.addProduct({ name: productName });
+  const newProduct = await productsModel.listProductById(newProductId);
+
+  return { type: null, message: newProduct };
 };
 
-const update = async (id, body) => {
-  productsValidate.validateUpdateBody(body);
-  const { name } = body;
+const updateProduct = async (id, newName) => {
+  const error = schema.validateNewProduct(newName);
+  if (error.type) return error;
 
-  const affectedRows = await productsModel.update(id, name);
+  const oldProduct = await productsModel.listProductById(id);
+  if (!oldProduct) return { type: 'PRODUCT_NOT_FOUND', message: 'Product not found' };
 
-  // Case affectedRows equal 0
-  if (!affectedRows) throw errorUtil(404, 'Product not found');
+  await productsModel.updateProduct(id, newName);
 
-  return { name, id };
+  return { type: null, message: { ...oldProduct, name: newName } };
 };
 
-const exclude = async (id) => {
-  const affectedRows = await productsModel.exclude(id);
+const deleteProduct = async (id) => {
+  console.log('service', id);
 
-  if (!affectedRows) throw errorUtil(404, 'Product not found');
+  await productsModel.deleteProduct(id);
+
+  return { type: null, message: null };
 };
 
-const search = async (q) => productsModel.searchName(!q ? '' : q);
-
-module.exports = { getAll, getById, create, update, exclude, search };
+module.exports = {
+  listProducts,
+  listProductById,
+  addProduct,
+  updateProduct,
+  deleteProduct,
+};

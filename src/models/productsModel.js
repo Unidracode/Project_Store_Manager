@@ -1,41 +1,49 @@
 const connection = require('./connection');
 
-const getAll = async () => {
-  const query = 'SELECT * FROM StoreManager.products';
-  const [rows] = await connection.execute(query);
-  return rows;
+const listProducts = async () => {
+  const [result] = await connection.execute(
+    'SELECT * FROM StoreManager.products',
+  );
+  return result;
 };
 
-const getById = async (id) => {
-  const query = 'SELECT * FROM StoreManager.products WHERE id = ?';
-  const [rows] = await connection.execute(query, [id]);
-  return rows;
+const listProductById = async (productId) => {
+  const [[product]] = await connection.execute(
+    'SELECT * FROM StoreManager.products WHERE id = ?', [productId],
+  );
+  return product;
 };
 
-const create = async (name) => {
-  const query = 'INSERT INTO StoreManager.products (name) VALUES (?)';
-  const [{ insertId }] = await connection.execute(query, [name]);
+const addProduct = async (productName) => {
+  const columns = Object.keys(productName).join(', ');
+  const placeholders = Object.keys(productName).map((_key) => '?').join(', ');
+
+  const [{ insertId }] = await connection.execute(
+    `INSERT INTO StoreManager.products (${columns}) VALUE (${placeholders})`,
+    [...Object.values(productName)],
+  );
+
   return insertId;
 };
 
-const update = async (id, name) => {
-  const query = 'UPDATE StoreManager.products SET name = ? WHERE id = ?';
-  const [{ affectedRows }] = await connection.execute(query, [name, id]);
-
+const updateProduct = async (id, newName) => {
+  const query = `UPDATE StoreManager.products SET name='${newName}' WHERE id=${id}`;
+  const [{ affectedRows }] = await connection.execute(
+    query,
+  );
   return affectedRows;
 };
 
-const exclude = async (id) => {
-  const query = 'DELETE FROM StoreManager.products WHERE id = ?';
-  const [{ affectedRows }] = await connection.execute(query, [id]);
-
+const deleteProduct = async (id) => {
+  const query = `DELETE FROM StoreManager.products WHERE id=${id}`;
+  const [{ affectedRows }] = await connection.execute(query);
   return affectedRows;
 };
 
-const searchName = async (q) => {
-  const query = 'SELECT * FROM StoreManager.products WHERE name LIKE ?';
-  const [rows] = await connection.execute(query, [`%${q}%`]);
-  return rows;
+module.exports = {
+  listProducts,
+  listProductById,
+  addProduct,
+  updateProduct,
+  deleteProduct,
 };
-
-module.exports = { getAll, getById, create, update, exclude, searchName };

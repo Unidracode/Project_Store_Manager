@@ -1,55 +1,55 @@
 const { productsService } = require('../services');
+const errorMap = require('../utils/errorMap');
 
-const getAll = async (_req, res) => {
-  const products = await productsService.getAll();
+const listProducts = async (_req, res) => {
+  const { message } = await productsService.listProducts();
 
-  if (!products) return res.status(404).json({ message: 'Products not found' });
-
-  res.status(200).json(products);
+  res.status(200).json(message);
 };
 
-const getById = async (req, res) => {
+const listProductById = async (req, res) => {
   const { id } = req.params;
 
-  const product = await productsService.getById(+id);
+  const { type, message } = await productsService.listProductById(id);
 
-  if (!product) return res.status(404).json({ message: 'Product not found' });
+  if (type) return res.status(errorMap.mapError(type)).json({ message });
 
-  res.status(200).json(product);
+  res.status(200).json(message);
 };
 
-const create = async (req, res, next) => {
+const addProduct = async (req, res) => {
   const { name } = req.body;
 
-  const product = await productsService.create(name);
+  const { type, message } = await productsService.addProduct(name);
 
-  if (!product) return next(new Error('Não foi possivel criar um produto.'));
+  if (type) return res.status(errorMap.mapError(type)).json({ message });
 
-  res.status(201).json(product);
+  res.status(201).json(message);
 };
 
-const update = async (req, res) => {
+const updateProduct = async (req, res) => {
+  const { id } = req.params;
+  const { name } = req.body;
+
+  const { type, message } = await productsService.updateProduct(id, name);
+
+  if (type) return res.status(errorMap.mapError(type)).json({ message });
+
+  res.status(200).json(message);
+};
+
+const deleteProduct = async (req, res) => {
   const { id } = req.params;
 
-  const product = await productsService.update(id, req.body);
+  productsService.deleteProduct(id);
 
-  res.status(200).json(product);
+  return res.status(204).json();
 };
 
-const exclude = async (req, res) => {
-  const { id } = req.params;
-
-  await productsService.exclude(+id);
-
-  res.status(204).end();
+module.exports = {
+  listProducts,
+  listProductById,
+  addProduct,
+  updateProduct,
+  deleteProduct,
 };
-
-const search = async (req, res) => {
-  const { q } = req.query;
-
-  const products = await productsService.search(q);
-
-  res.status(200).json(products);
-};
-
-module.exports = { getAll, getById, create, update, exclude, search };
