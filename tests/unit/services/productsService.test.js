@@ -1,138 +1,60 @@
-const chai = require('chai');
-chai.use(require('chai-as-promised'));
-const sinon = require('sinon');
-
-const { productsService } = require('../../../services');
-const { productsModel } = require('../../../models');
 const { expect } = require('chai');
+const sinon = require('sinon');
+const { productsService } = require('../../../src/services');
+const { productsModel } = require('../../../src/models');
 
-const data = [{ id: 1, name: "Martelo de Thor" }, { id: 2, name: "Traje de encolhimento" }];
+const { products, newProduct } = require('../mocks/productsMock');
 
-describe('services/productsService', () => {
-  afterEach(sinon.restore);
-  describe('getAll', () => {
-
-    it('Retorna uma lista', async () => {
-      sinon.stub(productsModel, 'getAll').resolves(data);
-
-      const products = await productsService.getAll();
-
-      expect(products).to.be.an('array');
-    });
-
-    it('Retorna uma lista de produtos', async () => {
-      sinon.stub(productsModel, 'getAll').resolves(data);
-
-      const products = await productsService.getAll();
-
-      expect(products).to.deep.equal(data);
-    });
-
-    it('Se a lista de produtos estiver vazia retorna null', async () => {
-      sinon.stub(productsModel, 'getAll').resolves([]);
-
-      const products = await productsService.getAll();
-
-      expect(products).to.equal(null);
+describe('Testes de unidade da camada Service de products', function () {
+  describe('Recuperando a lista com todos os produtos', function () {
+    it('retorna a lista completa de produtos', async function () {
+      sinon.stub(productsModel, 'listProducts').resolves(products);
+      const result = await productsService.listProducts();
+      expect(result.type).to.be.equal(null);
+      expect(result.message).to.be.deep.equal(products);
     });
   });
 
-  describe('getById', () => {
-
-    beforeEach(() => {
-      sinon.stub(productsModel, 'getById').resolves([data[0]]);
+  describe('Recuperando um produto através do seu id', function () {
+    it('retorna o product caso encontre o ID', async function () {
+      sinon.stub(productsModel, 'listProductById').resolves(products[0])
+      const result = await productsService.listProductById(1);
+      expect(result.type).to.be.equal(null);
+      expect(result.message).to.be.deep.equal(products[0]);
     });
 
-    it('Retorna um objeto', async () => {
-      const product = await productsService.getById(1);
-
-      expect(product).to.be.an('object');
+    it('retorna um erro caso o produto não exista', async function () {
+      const result = await productsService.listProductById(999);
+      expect(result.type).to.equal('PRODUCT_NOT_FOUND');
+      expect(result.message).to.equal('Product not found');
     });
 
-    it('Retona o id pedido', async () => {
-      const product = await productsService.getById(1);
-
-      expect(product.id).to.equal(1);
-    });
-
-    it('Se o id não for válido retorna null ', async () => {
-      const product = await productsService.getById();
-
-      expect(product).to.be.null;
+    it('retorna um erro caso receba um ID inválido', async function () {
+      const result = await productsService.listProductById('a');
+      expect(result.type).to.equal('INVALID_VALUE');
+      expect(result.message).to.equal('"id" must be a number');
     });
   });
 
-  describe('create', () => {
-    it('Se o name não for informado retorna null', async () => {
-      const result = await productsService.create();
-
-      expect(result).to.be.null;
-    });
-
-    it('Se o name for passado retorna um objeto com name e id', async () => {
-      sinon.stub(productsModel, 'create').resolves(1);
-
-      const result = await productsService.create('Martelo Enferrujado');
-
-      expect(result).to.deep.equal({ id: 1, name: 'Martelo Enferrujado' });
-    });
-  })
-
-  describe('update', () => {
-    it('Se o produto existir atualiza o nome', async () => {
-      sinon.stub(productsModel, 'update').resolves(1);
-
-      const result = await productsService.update(1, { name: 'Martelo' });
-
-      expect(result).to.deep.equal({ id: 1, name: 'Martelo' });
-    });
-
-    it('Se o produto não existir lança um erro', async () => {
-      sinon.stub(productsModel, 'update').resolves(0);
-
-      await expect(productsService.update(1, { name: 'Martelo' })).to.be.rejectedWith(Error);
+  describe('Adicionando product com valores válidos', function () {
+    it('retorna o ID do product adicionado', async function () {
+      sinon.stub(productsModel, 'addProduct').resolves(4)
+      sinon.stub(productsModel, 'listProductById').resolves(newProduct);
+      const result = await productsService.addProduct(newProduct.name);
+      expect(result.type).to.be.equal(null);
+      expect(result.message).to.be.deep.equal(newProduct);
     });
   });
 
-  describe('exclude', () => {
-    it('deleta o produto', async () => {
-      sinon.stub(productsModel, 'exclude').resolves(1);
-
-      await expect(productsService.exclude(1)).to.be.fulfilled;
-    });
-
-    it('Se o produto não existir lança um erro', async () => {
-      sinon.stub(productsModel, 'exclude').resolves(0);
-
-      await expect(productsService.exclude(1)).to.be.rejectedWith(Error);
+  describe('Adicionando product com valores inválidos', function () {
+    it('retorna um erro ao passar um nome inválido', async function () {
+      const result = await productsService.addProduct('');
+      expect(result.type).to.be.equal('INVALID_VALUE');
+      expect(result.message).to.be.equal('"name" length must be at least 5 characters long');
     });
   });
 
-  describe('search', () => {
-    it('encontra o produto', async () => {
-      const data = [
-        { "id": 1, "name": "Martelo de Thor" }
-      ]
-
-      sinon.stub(productsModel, 'searchName').resolves(data);
-
-      const result = await productsService.search('Martelo');
-
-      expect(result).to.deep.equal(data);
-    });
-
-    it('exibe todos os produtos', async () => {
-      const data = [
-        { "id": 1, "name": "Martelo de Thor" },
-        { "id": 2, "name": "Capacete do Homem de Ferro" }
-      ]
-
-      sinon.stub(productsModel, 'searchName').resolves(data);
-
-      const result = await productsService.search('');
-
-      expect(result).to.deep.equal(data);
-    });
-  })
-
+  afterEach(function () {
+    sinon.restore();
+  });
 });
